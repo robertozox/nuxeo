@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<component name="org.nuxeo.ecm.platform.commandline.executor.service.soffice.test">
+
+  <extension target="org.nuxeo.ecm.platform.commandline.executor.service.CommandLineExecutorComponent"
+             point="environment">
+    <documentation>Environment parameters for testing the soffice converter.</documentation>
+    <environment name="soffice">
+      <parameters>
+        <!-- Parameters for test purposes -->
+        <parameter name="TMPDIR">${java.io.tmpdir}</parameter>
+        <parameter name="TMP">${java.io.tmpdir}</parameter>
+        <parameter name="TEMP">${java.io.tmpdir}</parameter>
+        <parameter name="TEMPDIR">${java.io.tmpdir}</parameter>
+      </parameters>
+    </environment>
+  </extension>
+</component>
