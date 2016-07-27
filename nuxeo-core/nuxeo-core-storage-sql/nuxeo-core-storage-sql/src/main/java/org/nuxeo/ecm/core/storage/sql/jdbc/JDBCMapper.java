@@ -35,13 +35,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -49,10 +47,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.sql.XADataSource;
-import javax.transaction.Transaction;
 import javax.transaction.xa.XAException;
 import javax.transaction.xa.XAResource;
 import javax.transaction.xa.Xid;
@@ -65,6 +64,8 @@ import org.nuxeo.ecm.core.api.IterableQueryResult;
 import org.nuxeo.ecm.core.api.Lock;
 import org.nuxeo.ecm.core.api.NuxeoException;
 import org.nuxeo.ecm.core.api.PartialList;
+import org.nuxeo.ecm.core.api.ScrollResult;
+import org.nuxeo.ecm.core.api.ScrollResultImpl;
 import org.nuxeo.ecm.core.blob.BlobManager;
 import org.nuxeo.ecm.core.model.LockManager;
 import org.nuxeo.ecm.core.query.QueryFilter;
@@ -88,6 +89,8 @@ import org.nuxeo.ecm.core.storage.sql.jdbc.dialect.DialectOracle;
 import org.nuxeo.ecm.core.storage.sql.jdbc.dialect.SQLStatement.ListCollector;
 import org.nuxeo.runtime.api.Framework;
 
+import static org.nuxeo.ecm.core.api.ScrollResultImpl.emptyResult;
+
 /**
  * A {@link JDBCMapper} maps objects to and from a JDBC database. It is specific to a given database connection, as it
  * computes statements.
@@ -100,6 +103,8 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
     private static final Log log = LogFactory.getLog(JDBCMapper.class);
 
     public static Map<String, Serializable> testProps = new HashMap<String, Serializable>();
+
+    protected static Map<String, CursorResult> cursorResults = new ConcurrentHashMap<>();
 
     public static final String TEST_UPGRADE = "testUpgrade";
 
@@ -922,6 +927,131 @@ public class JDBCMapper extends JDBCRowMapper implements Mapper {
         } catch (SQLException e) {
             throw new NuxeoException("Invalid query: " + queryType + ": " + query, e);
         }
+    }
+
+    @Override
+    public ScrollResult scroll(String query, int batchSize, int keepAliveInSecond) {
+        if (!dialect.supportsScroll()) {
+            return defaultScroll(query);
+        }
+        return scrollSearch(query, batchSize, keepAliveInSecond);
+    }
+
+    protected ScrollResult scrollSearch(String query, int batchSize, int keepAliveInSecond) {
+        QueryMaker queryMaker = findQueryMaker("NXQL");
+        QueryFilter queryFilter = new QueryFilter(null, null, null, null, Collections.emptyList(), 0, 0);
+        QueryMaker.Query q = queryMaker.buildQuery(sqlInfo, model, pathResolver, query, queryFilter, null);
+        if (q == null) {
+            logger.log("Query cannot return anything due to conflicting clauses");
+            throw new NuxeoException("Query cannot return anything due to conflicting clauses");
+        }
+        if (logger.isLogEnabled()) {
+            logger.logSQL(q.selectInfo.sql, q.selectParams);
+        }
+        try {
+            if (connection.getAutoCommit()) {
+                throw new NuxeoException("Scroll should be done inside a transaction");
+            }
+            PreparedStatement ps = connection.prepareStatement(q.selectInfo.sql, ResultSet.TYPE_FORWARD_ONLY,
+                    ResultSet.CONCUR_READ_ONLY);
+            ps.setFetchSize(batchSize);
+            int i = 1;
+            for (Serializable object : q.selectParams) {
+                setToPreparedStatement(ps, i++, object);
+            }
+            ResultSet rs = ps.executeQuery();
+            String scrollId = UUID.randomUUID().toString();
+            registerCursor(scrollId, ps, rs, batchSize);
+            return scroll(scrollId);
+        } catch (SQLException e) {
+            throw new NuxeoException("Error on query", e);
+        }
+    }
+
+    protected class CursorResult {
+        protected PreparedStatement preparedStatement;
+        protected ResultSet resultSet;
+        protected int batchSize;
+
+        CursorResult(PreparedStatement preparedStatement, ResultSet resultSet, int batchSize) {
+            this.preparedStatement = preparedStatement;
+            this.resultSet = resultSet;
+            this.batchSize = batchSize;
+        }
+
+        void close() throws SQLException {
+            if (resultSet != null) {
+                resultSet.close();
+            }
+            if (preparedStatement != null) {
+                preparedStatement.close();
+            }
+        }
+
+    }
+
+    protected void registerCursor(String scrollId, PreparedStatement ps, ResultSet rs, int batchSize) {
+        cursorResults.put(scrollId, new CursorResult(ps, rs, batchSize));
+    }
+
+    protected void unregisterCursor(String scrollId) {
+        CursorResult cursor = cursorResults.remove(scrollId);
+        if (cursor != null) {
+            try {
+                cursor.close();
+            } catch (SQLException e) {
+                throw new NuxeoException("Failed to close cursor");
+            }
+        }
+    }
+
+
+    protected ScrollResult defaultScroll(String query) {
+        // the database has no proper support for cursor just return everything in one batch
+        QueryMaker queryMaker = findQueryMaker("NXQL");
+        List<String> ids;
+        QueryFilter queryFilter = new QueryFilter(null, null, null, null, Collections.emptyList(), 0, 0);
+        try (IterableQueryResult  ret = new ResultSetQueryResult(queryMaker, query, queryFilter, pathResolver, this, null)) {
+            ids = new ArrayList<>((int) ret.size());
+            for (Map<String, Serializable> map : ret) {
+                ids.add(map.get("ecm:uuid").toString());
+            }
+        } catch (SQLException e) {
+            throw new NuxeoException("Invalid scroll query: " + query, e);
+        }
+        return new ScrollResultImpl("noscroll", ids);
+    }
+
+    @Override
+    public ScrollResult scroll(String scrollId) {
+        if (!dialect.supportsScroll()) {
+            // there is only one batch in this case
+            return emptyResult();
+        }
+        CursorResult cursorResult = cursorResults.get(scrollId);
+        if (cursorResult == null) {
+            return emptyResult();
+        }
+        List<String> ids = new ArrayList<>(cursorResult.batchSize);
+        synchronized (cursorResult) {
+            try {
+                if (cursorResult.resultSet == null || cursorResult.resultSet.isClosed()) {
+                    unregisterCursor(scrollId);
+                    return emptyResult();
+                }
+                while (ids.size() < cursorResult.batchSize) {
+                    if (cursorResult.resultSet.next()) {
+                        ids.add(cursorResult.resultSet.getString(1));
+                    } else {
+                        unregisterCursor(scrollId);
+                        break;
+                    }
+                }
+            } catch (SQLException e) {
+                throw new NuxeoException("Error in scroll", e);
+            }
+        }
+        return new ScrollResultImpl(scrollId, ids);
     }
 
     @Override
