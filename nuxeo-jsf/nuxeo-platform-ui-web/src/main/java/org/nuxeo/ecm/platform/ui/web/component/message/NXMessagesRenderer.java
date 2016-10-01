@@ -1,5 +1,5 @@
 /*
- * (C) Copyright 2013 Nuxeo SA (http://nuxeo.com/) and others.
+ * (C) Copyright 2016 Nuxeo SA (http://nuxeo.com/) and others.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -106,8 +106,6 @@ public class NXMessagesRenderer extends MessagesRenderer implements ComponentSys
             // make sure we have a non-null value for summary and
             // detail.
             String summary = (null != (summary = curMessage.getSummary())) ? summary : "";
-            // Default to summary if we have no detail
-            String detail = (null != (detail = curMessage.getDetail())) ? detail : summary;
 
             String severityStyleClass = null;
             String errorType = "default";
@@ -136,13 +134,18 @@ public class NXMessagesRenderer extends MessagesRenderer implements ComponentSys
             writer.startElement("script", messages);
             writer.writeAttribute("type", "text/javascript", null);
             String message = "";
+            if (showDetail) {
+            	// Default to summary if we have no detail
+            	String detail = (null != (detail = curMessage.getDetail())) ? detail : summary;
+                message = StringEscapeUtils.escapeJavaScript(StringEscapeUtils.escapeHtml(detail));
+            }
             String scriptContent = new StringBuilder().append("jQuery(document).ready(function() {\n")
                                                       .append("  jQuery.ambiance({\n")
                                                       .append("    message: \"")
                                                       .append(message)
                                                       .append("\",\n")
                                                       .append("    title: \"")
-                                                      .append(StringEscapeUtils.escapeJavaScript(summary))
+                                                      .append(StringEscapeUtils.escapeJavaScript(StringEscapeUtils.escapeHtml(summary)))
                                                       .append("\",\n")
                                                       .append("    type: \"")
                                                       .append(errorType)
@@ -156,17 +159,7 @@ public class NXMessagesRenderer extends MessagesRenderer implements ComponentSys
                                                       .append("  })\n")
                                                       .append("});\n")
                                                       .toString();
-            if (showDetail) {
-                message = String.format(scriptContent,
-                        StringEscapeUtils.escapeJavaScript(StringEscapeUtils.escapeHtml(detail)),
-                        StringEscapeUtils.escapeJavaScript(StringEscapeUtils.escapeHtml(summary)), errorType,
-                        severityStyleClass, timeout);
-            } else {
-                message = String.format(scriptContent, "",
-                        StringEscapeUtils.escapeJavaScript(StringEscapeUtils.escapeHtml(summary)), errorType,
-                        severityStyleClass, timeout);
-            }
-            writer.writeText(message, null);
+            writer.writeText(scriptContent, null);
             writer.endElement("script");
         }
     }
