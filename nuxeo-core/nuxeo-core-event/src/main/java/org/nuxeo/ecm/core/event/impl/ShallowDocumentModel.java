@@ -21,24 +21,10 @@
 
 package org.nuxeo.ecm.core.event.impl;
 
-import java.io.Serializable;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Set;
-
 import org.nuxeo.common.collections.ScopeType;
 import org.nuxeo.common.collections.ScopedMap;
 import org.nuxeo.common.utils.Path;
-import org.nuxeo.ecm.core.api.CoreSession;
-import org.nuxeo.ecm.core.api.DataModel;
-import org.nuxeo.ecm.core.api.DataModelMap;
-import org.nuxeo.ecm.core.api.DocumentModel;
-import org.nuxeo.ecm.core.api.DocumentRef;
-import org.nuxeo.ecm.core.api.IdRef;
-import org.nuxeo.ecm.core.api.Lock;
-import org.nuxeo.ecm.core.api.PathRef;
-import org.nuxeo.ecm.core.api.PropertyException;
-import org.nuxeo.ecm.core.api.VersioningOption;
+import org.nuxeo.ecm.core.api.*;
 import org.nuxeo.ecm.core.api.model.DocumentPart;
 import org.nuxeo.ecm.core.api.model.Property;
 import org.nuxeo.ecm.core.api.model.PropertyVisitor;
@@ -48,6 +34,11 @@ import org.nuxeo.ecm.core.api.security.ACP;
 import org.nuxeo.ecm.core.event.Event;
 import org.nuxeo.ecm.core.event.EventBundle;
 import org.nuxeo.ecm.core.schema.DocumentType;
+
+import java.io.Serializable;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Light weight {@link DocumentModel} implementation Only holds {@link DocumentRef}, RepositoryName, name, path and
@@ -105,18 +96,18 @@ public class ShallowDocumentModel implements DocumentModel {
     public ShallowDocumentModel(String id, String repoName, String name, Path path, String type, boolean isFolder,
             boolean isVersion, boolean isProxy, boolean isImmutable, ScopedMap contextData, Set<String> facets,
             String lifecycleState) {
-        this.id=id;
-        this.repoName=repoName;
-        this.name=name;
-        this.path=path;
-        this.type=type;
-        this.isFolder=isFolder;
-        this.isVersion=isVersion;
-        this.isProxy=isProxy;
-        this.isImmutable=isImmutable;
-        this.contextData=contextData;
-        this.facets=facets;
-        this.lifecycleState=lifecycleState;
+        this.id = id;
+        this.repoName = repoName;
+        this.name = name;
+        this.path = path;
+        this.type = type;
+        this.isFolder = isFolder;
+        this.isVersion = isVersion;
+        this.isProxy = isProxy;
+        this.isImmutable = isImmutable;
+        this.contextData = contextData;
+        this.facets = facets;
+        this.lifecycleState = lifecycleState;
     }
 
     @Override
