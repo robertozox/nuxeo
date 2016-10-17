@@ -108,6 +108,10 @@ public class DBSRepositoryService extends DefaultComponent {
         } catch (ReflectiveOperationException e) {
             throw new NuxeoException(e);
         }
+        boolean cache = true;
+        if (cache) {
+            repositoryFactory = new DBSCachingRepositoryFactory(repositoryName, repositoryFactory);
+        }
         Repository repository = new Repository(repositoryName, descriptor.label, descriptor.isDefault(),
                 repositoryFactory);
         repositoryManager.addRepository(repository);
