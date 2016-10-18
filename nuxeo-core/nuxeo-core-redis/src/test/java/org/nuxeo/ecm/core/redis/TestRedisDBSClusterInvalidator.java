@@ -26,12 +26,11 @@ import javax.inject.Inject;
 import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.nuxeo.ecm.core.model.Repository;
 import org.nuxeo.ecm.core.redis.RedisFeature.Mode;
-import org.nuxeo.ecm.core.redis.contribs.RedisClusterInvalidator;
-import org.nuxeo.ecm.core.storage.sql.Invalidations;
-import org.nuxeo.ecm.core.storage.sql.RepositoryImpl;
-import org.nuxeo.ecm.core.storage.sql.RowId;
-import org.nuxeo.ecm.core.storage.sql.coremodel.SQLRepositoryService;
+import org.nuxeo.ecm.core.redis.contribs.RedisDBSClusterInvalidator;
+import org.nuxeo.ecm.core.repository.RepositoryService;
+import org.nuxeo.ecm.core.storage.dbs.Invalidations;
 import org.nuxeo.ecm.core.test.CoreFeature;
 import org.nuxeo.runtime.api.Framework;
 import org.nuxeo.runtime.test.runner.Features;
@@ -42,28 +41,28 @@ import org.nuxeo.runtime.test.runner.FeaturesRunner;
  */
 @RunWith(FeaturesRunner.class)
 @Features({ CoreFeature.class, RedisFeature.class })
-public class TestRedisClusterInvalidator {
+public class TestRedisDBSClusterInvalidator {
 
     @Inject
     private FeaturesRunner runner;
 
     @Test
     public void testInitializeAndClose() throws Exception {
-        RedisClusterInvalidator rci = createRedisClusterInvalidator("node1");
+        RedisDBSClusterInvalidator rci = createRedisDBSClusterInvalidator("node1");
         rci.close();
     }
 
-    private RedisClusterInvalidator createRedisClusterInvalidator(String node) {
+    private RedisDBSClusterInvalidator createRedisDBSClusterInvalidator(String node) {
         assumeTrueRedisServer();
-        RepositoryImpl repository = getDefaultRepository();
-        RedisClusterInvalidator rci = new RedisClusterInvalidator();
+        Repository repository = getDefaultRepository();
+        RedisDBSClusterInvalidator rci = new RedisDBSClusterInvalidator();
         rci.initialize(node, repository);
         return rci;
     }
 
-    private RepositoryImpl getDefaultRepository() {
-        SQLRepositoryService repositoryService = Framework.getService(SQLRepositoryService.class);
-        return repositoryService.getRepositoryImpl(repositoryService.getRepositoryNames().get(0));
+    private Repository getDefaultRepository() {
+        RepositoryService repositoryService = Framework.getLocalService(RepositoryService.class);
+        return repositoryService.getRepository("test");
     }
 
     private void assumeTrueRedisServer() {
@@ -76,12 +75,12 @@ public class TestRedisClusterInvalidator {
         RedisExecutor redisExecutor = Framework.getLocalService(RedisExecutor.class);
         redisExecutor.startMonitor();
         int delayMs = 10000;
-        RedisClusterInvalidator rci2 = createRedisClusterInvalidator("node2");
-        RedisClusterInvalidator rci1 = createRedisClusterInvalidator("node1");
+        RedisDBSClusterInvalidator rci2 = createRedisDBSClusterInvalidator("node2");
+        RedisDBSClusterInvalidator rci1 = createRedisDBSClusterInvalidator("node1");
         try {
             Invalidations invals = new Invalidations();
-            invals.addModified(new RowId("dublincore", "docid1"));
-            invals.addModified(new RowId("dublincore", "docid2"));
+            invals.add("docid1");
+            invals.add("docid2");
             rci1.sendInvalidations(invals);
             Invalidations invalsReceived = waitForInvalidation(rci2, delayMs);
             assertNotNull("No invalidation received after " + delayMs + " ms", invalsReceived.isEmpty());
@@ -93,7 +92,7 @@ public class TestRedisClusterInvalidator {
         }
     }
 
-    private Invalidations waitForInvalidation(RedisClusterInvalidator rci2, int countdown_ms)
+    private Invalidations waitForInvalidation(RedisDBSClusterInvalidator rci2, int countdown_ms)
             throws InterruptedException {
         Invalidations ret;
         do {
@@ -109,19 +108,19 @@ public class TestRedisClusterInvalidator {
         int delayMs = 10000;
         RedisExecutor redisExecutor = Framework.getLocalService(RedisExecutor.class);
         redisExecutor.startMonitor();
-        RedisClusterInvalidator rci2 = createRedisClusterInvalidator("node2");
-        RedisClusterInvalidator rci1 = createRedisClusterInvalidator("node1");
+        RedisDBSClusterInvalidator rci2 = createRedisDBSClusterInvalidator("node2");
+        RedisDBSClusterInvalidator rci1 = createRedisDBSClusterInvalidator("node1");
         try {
             Invalidations invals = new Invalidations();
-            invals.addModified(new RowId("dublincore", "docid1"));
+            invals.add("docid1");
             rci1.sendInvalidations(invals);
             invals = new Invalidations();
-            invals.addModified(new RowId("dublincore", "docid2"));
+            invals.add("docid2");
             rci1.sendInvalidations(invals);
             Invalidations invalsReceived = waitForInvalidation(rci2, delayMs);
-            assertNotNull(invals.modified);
-            assertNotNull("No invalidation received after " + delayMs + " ms", invalsReceived.modified);
-            assertEquals(2, invalsReceived.modified.size());
+            assertNotNull(invals.documentIds);
+            assertNotNull("No invalidation received after " + delayMs + " ms", invalsReceived.documentIds);
+            assertEquals(2, invalsReceived.documentIds.size());
         } finally {
             rci1.close();
             rci2.close();

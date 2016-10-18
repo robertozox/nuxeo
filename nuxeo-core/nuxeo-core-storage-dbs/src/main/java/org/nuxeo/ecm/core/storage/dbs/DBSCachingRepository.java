@@ -24,13 +24,19 @@ import static org.nuxeo.ecm.core.storage.dbs.DBSDocument.KEY_PARENT_ID;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.nuxeo.ecm.core.api.Lock;
+import org.nuxeo.ecm.core.api.NuxeoException;
 import org.nuxeo.ecm.core.api.PartialList;
 import org.nuxeo.ecm.core.api.ScrollResult;
 import org.nuxeo.ecm.core.blob.BlobManager;
@@ -53,45 +59,73 @@ import com.google.common.collect.Ordering;
  */
 public class DBSCachingRepository implements DBSRepository {
 
-    // TODO make it configurable
-    private static final long CACHE_TTL = 10;
+    private static final Log log = LogFactory.getLog(DBSCachingRepository.class);
 
-    // TODO make it configurable
-    private static final long CACHE_MAX_SIZE = 1000;
-
-    // TODO make it configurable
-    private static final int CACHE_CONCURRENCY_LEVEL = 10;
+    private static final Random RANDOM = new Random();
 
     private final DBSRepository repository;
-
-    private final DBSRepositoryDescriptor repositoryDescriptor;
 
     private final Cache<String, State> cache;
 
     private final Cache<String, String> childCache;
 
-    public DBSCachingRepository(DBSRepository repository, DBSRepositoryDescriptor repositoryDescriptor) {
+    private ClusterInvalidator clusterInvalidator;
+
+    public DBSCachingRepository(DBSRepository repository, DBSRepositoryDescriptor descriptor) {
         this.repository = repository;
-        this.repositoryDescriptor = repositoryDescriptor;
         // Init caches
-        cache = newCache();
-        childCache = newCache();
+        cache = newCache(descriptor);
+        childCache = newCache(descriptor);
+        if (descriptor.isClusteringEnabled()) {
+            initClusterInvalidator(descriptor);
+        }
     }
 
-    protected <T> Cache<String, T> newCache() {
+    protected <T> Cache<String, T> newCache(DBSRepositoryDescriptor descriptor) {
         CacheBuilder<Object, Object> builder = CacheBuilder.newBuilder();
-        builder = builder.expireAfterWrite(CACHE_TTL, TimeUnit.MINUTES);
-        // if (desc.options.containsKey("concurrencyLevel")) {
-        builder = builder.concurrencyLevel(CACHE_CONCURRENCY_LEVEL);
-        // }
-        // if (desc.options.containsKey("maxSize")) {
-        builder = builder.maximumSize(CACHE_MAX_SIZE);
-        // }
+        builder = builder.expireAfterWrite(descriptor.cacheTtl, TimeUnit.MINUTES);
+        if (descriptor.cacheConcurrencyLevel != null) {
+            builder = builder.concurrencyLevel(descriptor.cacheConcurrencyLevel);
+        }
+        if (descriptor.cacheMaxSize != null) {
+            builder = builder.maximumSize(descriptor.cacheMaxSize);
+        }
         return builder.build();
+    }
+
+    protected void initClusterInvalidator(DBSRepositoryDescriptor descriptor) {
+        String nodeId = descriptor.clusterNodeId;
+        if (StringUtils.isBlank(nodeId)) {
+            // need a smallish int because of SQL Server legacy node ids
+            nodeId = String.valueOf(RANDOM.nextInt(32768));
+            log.warn(
+                    "Missing cluster node id configuration, please define it explicitly (usually through repository.clustering.id). "
+                            + "Using random cluster node id instead: " + nodeId);
+        } else {
+            nodeId = nodeId.trim();
+        }
+        clusterInvalidator = createClusterInvalidator(descriptor);
+        clusterInvalidator.initialize(nodeId, this);
+    }
+
+    protected ClusterInvalidator createClusterInvalidator(DBSRepositoryDescriptor descriptor) {
+        Class<? extends ClusterInvalidator> klass = descriptor.clusterInvalidatorClass;
+        if (klass == null) {
+            throw new NuxeoException(
+                    "Unable to get cluster invalidator class from descriptor whereas clustering is enabled");
+        }
+        try {
+            return klass.newInstance();
+        } catch (ReflectiveOperationException e) {
+            throw new NuxeoException(e);
+        }
+
     }
 
     @Override
     public State readState(String id) {
+        processReceivedInvalidations();
+
         State state = cache.getIfPresent(id);
         if (state == null) {
             state = repository.readState(id);
@@ -104,6 +138,8 @@ public class DBSCachingRepository implements DBSRepository {
 
     @Override
     public List<State> readStates(List<String> ids) {
+        processReceivedInvalidations();
+
         ImmutableMap<String, State> statesMap = cache.getAllPresent(ids);
         List<String> idsToRetrieve = new ArrayList<>(ids);
         idsToRetrieve.removeAll(statesMap.keySet());
@@ -136,17 +172,19 @@ public class DBSCachingRepository implements DBSRepository {
     public void updateState(String id, StateDiff diff) {
         repository.updateState(id, diff);
         // TODO check if we want to update the state into the cache
-        cache.invalidate(id);
+        invalidate(id);
     }
 
     @Override
     public void deleteStates(Set<String> ids) {
         repository.deleteStates(ids);
-        cache.invalidateAll(ids);
+        invalidateAll(ids);
     }
 
     @Override
     public State readChildState(String parentId, String name, Set<String> ignored) {
+        processReceivedInvalidations();
+
         String childCacheKey = computeChildCacheKey(parentId, name);
         String stateId = childCache.getIfPresent(childCacheKey);
         if (stateId != null) {
@@ -171,6 +209,32 @@ public class DBSCachingRepository implements DBSRepository {
 
     private String computeChildCacheKey(String parentId, String name) {
         return parentId + '_' + name;
+    }
+
+    private void invalidate(String id) {
+        invalidateAll(Collections.singleton(id));
+    }
+
+    private void invalidateAll(Iterable<String> ids) {
+        cache.invalidateAll(ids);
+        if (clusterInvalidator != null) {
+            Invalidations invalidations = new Invalidations();
+            ids.forEach(invalidations::add);
+            clusterInvalidator.sendInvalidations(invalidations);
+        }
+    }
+
+    protected void processReceivedInvalidations() {
+        if (clusterInvalidator != null) {
+            Invalidations invalidations = clusterInvalidator.receiveInvalidations();
+            if (invalidations.all) {
+                cache.invalidateAll();
+                childCache.invalidateAll();
+            }
+            if (invalidations.documentIds != null) {
+                cache.invalidateAll(invalidations.documentIds);
+            }
+        }
     }
 
     @Override
@@ -285,6 +349,10 @@ public class DBSCachingRepository implements DBSRepository {
         repository.shutdown();
         cache.invalidateAll();
         childCache.invalidateAll();
+        // Send invalidations
+        if (clusterInvalidator != null) {
+            clusterInvalidator.sendInvalidations(new Invalidations(true));
+        }
     }
 
     @Override

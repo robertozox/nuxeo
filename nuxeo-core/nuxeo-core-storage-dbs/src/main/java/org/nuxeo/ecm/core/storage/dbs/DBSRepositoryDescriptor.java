@@ -90,6 +90,43 @@ public class DBSRepositoryDescriptor implements Cloneable {
         fulltextDescriptor.setFulltextIncludedTypes(fulltextIncludedTypes);
     }
 
+    @XNode("cache@enabled")
+    private Boolean cacheEnabled;
+
+    public boolean isCacheEnabled() {
+        return defaultFalse(cacheEnabled);
+    }
+
+    protected void setCacheEnabled(boolean enabled) {
+        cacheEnabled = Boolean.valueOf(enabled);
+    }
+
+    @XNode("cache@ttl")
+    public Long cacheTtl;
+
+    @XNode("cache@maxSize")
+    public Long cacheMaxSize;
+
+    @XNode("cache@concurrencyLevel")
+    public Integer cacheConcurrencyLevel;
+
+    @XNode("clustering@id")
+    public String clusterNodeId;
+
+    @XNode("clustering@enabled")
+    private Boolean clusteringEnabled;
+
+    @XNode("clustering/invalidatorClass")
+    public Class<? extends ClusterInvalidator> clusterInvalidatorClass;
+
+    public boolean isClusteringEnabled() {
+        return defaultFalse(clusteringEnabled);
+    }
+
+    protected void setClusteringEnabled(boolean enabled) {
+        clusteringEnabled = Boolean.valueOf(enabled);
+    }
+
     @Override
     public DBSRepositoryDescriptor clone() {
         try {
@@ -115,6 +152,31 @@ public class DBSRepositoryDescriptor implements Cloneable {
             idType = other.idType;
         }
         fulltextDescriptor.merge(other.fulltextDescriptor);
+        if (other.cacheEnabled != null) {
+            cacheEnabled = other.cacheEnabled;
+        }
+        if (other.cacheTtl != null) {
+            cacheTtl = other.cacheTtl;
+        }
+        if (other.cacheMaxSize != null) {
+            cacheMaxSize = other.cacheMaxSize;
+        }
+        if (other.cacheConcurrencyLevel != null) {
+            cacheConcurrencyLevel = other.cacheConcurrencyLevel;
+        }
+        if (other.clusterNodeId != null) {
+            clusterNodeId = other.clusterNodeId;
+        }
+        if (other.clusteringEnabled != null) {
+            clusteringEnabled = other.clusteringEnabled;
+        }
+        if (other.clusterInvalidatorClass != null) {
+            clusterInvalidatorClass = other.clusterInvalidatorClass;
+        }
+    }
+
+    private static boolean defaultFalse(Boolean bool) {
+        return Boolean.TRUE.equals(bool);
     }
 
 }
