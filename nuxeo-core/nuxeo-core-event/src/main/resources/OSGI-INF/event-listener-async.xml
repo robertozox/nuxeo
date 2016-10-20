@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<component name="event-listener-async">
+
+    <extension
+        target="org.nuxeo.ecm.core.event.EventServiceComponent"
+        point="listener">
+        <listener
+            async="true"
+            postCommit="false"
+            class="org.nuxeo.ecm.core.event.pipe.listener.SimplePostCommitEventListener"
+            name="postCommit">
+        </listener>
+
+    </extension>
+
+    <extension
+        target="org.nuxeo.ecm.core.event.EventServiceComponent"
+        point="dispatcher">
+        <eventDispatcher
+                class="org.nuxeo.ecm.core.event.pipe.dispatch.SimpleEventBundlePipeDispatcher"
+                name="dispatcher"
+        />
+    </extension>
+
+    <extension target="org.nuxeo.ecm.core.event.EventServiceComponent" point="pipe">
+        <eventPipe name="pipe"
+                   class="org.nuxeo.ecm.core.event.pipe.local.LocalEventBundlePipe"
+                   priority="0" />
+    </extension>
+</component>

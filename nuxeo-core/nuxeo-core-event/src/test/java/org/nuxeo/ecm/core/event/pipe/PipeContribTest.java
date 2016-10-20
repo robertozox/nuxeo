@@ -45,22 +45,11 @@ public class PipeContribTest {
 
         // check that pipes were contributed
         Assert.assertNotNull(DummyDispatcher.pipeDescriptors);
-        // check that the 2 contrib on the same pipe were merged
-        Assert.assertEquals(2, DummyDispatcher.pipeDescriptors.size());
-
-        // check first pipe
-        EventPipeDescriptor desc1 = DummyDispatcher.pipeDescriptors.get(0);
-        Assert.assertEquals("dummyPipe1", desc1.getName());
-
         // check second pipe
         EventPipeDescriptor desc2 = DummyDispatcher.pipeDescriptors.get(1);
-        Assert.assertEquals("dummyPipe2", desc2.getName());
-
-        // check that params were merged
-        Assert.assertEquals(2, desc2.getParameters().size());
 
         // check that priority was overridden
-        Assert.assertEquals(new Integer(10), desc2.getPriority());
+        Assert.assertEquals(new Integer(0), desc2.getPriority());
 
 
         UnboundEventContext ctx = new UnboundEventContext(new SimplePrincipal("titi"), null);

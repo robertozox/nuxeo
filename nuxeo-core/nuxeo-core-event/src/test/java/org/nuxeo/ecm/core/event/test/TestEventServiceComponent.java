@@ -28,19 +28,14 @@ import org.nuxeo.ecm.core.event.EventService;
 import org.nuxeo.ecm.core.event.EventServiceAdmin;
 import org.nuxeo.ecm.core.event.impl.EventContextImpl;
 import org.nuxeo.ecm.core.event.impl.EventImpl;
-import org.nuxeo.ecm.core.event.impl.EventListenerDescriptor;
 import org.nuxeo.ecm.core.event.impl.EventServiceImpl;
 import org.nuxeo.ecm.core.event.impl.PostCommitEventExecutor;
 import org.nuxeo.runtime.api.Framework;
 import org.nuxeo.runtime.test.NXRuntimeTestCase;
 
 import java.net.URL;
-import java.util.List;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
 public class TestEventServiceComponent extends NXRuntimeTestCase {
 
     protected int initialThreadCount;
@@ -69,71 +64,6 @@ public class TestEventServiceComponent extends NXRuntimeTestCase {
         service.fireEvent(commit);
         service.waitForAsyncCompletion();
         super.tearDown();
-    }
-
-    @Test
-    public void testDisablingListener() throws Exception {
-        URL url = EventListenerTest.class.getClassLoader().getResource("test-disabling-listeners1.xml");
-        deployTestContrib("org.nuxeo.ecm.core.event", url);
-        EventService service = Framework.getService(EventService.class);
-        EventServiceImpl serviceImpl = (EventServiceImpl) service;
-
-        List<EventListenerDescriptor> eventListenerDescriptors = serviceImpl.getEventListenerList().getSyncPostCommitListenersDescriptors();
-        assertEquals(1, eventListenerDescriptors.size());
-
-        EventListenerDescriptor eventListenerDescriptor = eventListenerDescriptors.get(0);
-        assertTrue(eventListenerDescriptor.isEnabled());
-
-        url = EventListenerTest.class.getClassLoader().getResource("test-disabling-listeners2.xml");
-        deployTestContrib("org.nuxeo.ecm.core.event", url);
-
-        eventListenerDescriptors = serviceImpl.getEventListenerList().getSyncPostCommitListenersDescriptors();
-        assertEquals(1, eventListenerDescriptors.size());
-
-        eventListenerDescriptor = eventListenerDescriptors.get(0);
-        assertFalse(eventListenerDescriptor.isEnabled());
-    }
-
-
-    @Test
-    public void testAsync() throws Exception {
-        URL url = getClass().getClassLoader().getResource("test-async-listeners.xml");
-        deployTestContrib("org.nuxeo.ecm.core.event", url);
-        EventService service = Framework.getService(EventService.class);
-
-        // send two events, only one of which is recognized by the listener
-        // (the other is filtered out of the bundle passed to this listener)
-        Event test1 = new EventImpl("testasync", new EventContextImpl());
-        service.fireEvent(test1);
-        assertEquals(DummyPostCommitEventListener.handledCount(), 0);
-        Event test2 = new EventImpl("testnotmached", new EventContextImpl());
-        test2.setIsCommitEvent(true);
-        service.fireEvent(test2);
-        service.waitForAsyncCompletion();
-        Thread.sleep(100); // TODO async completion has race conditions
-        assertEquals(1, DummyPostCommitEventListener.handledCount());
-        assertEquals(1, DummyPostCommitEventListener.eventCount());
-
-        // check new information from sync event are retrieved in postcommit
-        // listener
-        assertEquals("bar", DummyPostCommitEventListener.properties.get("foo"));
-    }
-
-    @Test
-    public void testAsyncRetry() throws Exception {
-        URL url = getClass().getClassLoader().getResource("test-async-listeners.xml");
-        deployTestContrib("org.nuxeo.ecm.core.event", url);
-        EventService service = Framework.getLocalService(EventService.class);
-
-        // send two events, only one of which is recognized by the listener
-        // (the other is filtered out of the bundle passed to this listener)
-        EventContextImpl context = new EventContextImpl();
-        context.setProperty("concurrentexception", Boolean.TRUE);
-        Event test1 = new EventImpl("testasync", context);
-        test1.setIsCommitEvent(true);
-        service.fireEvent(test1);
-        service.waitForAsyncCompletion();
-        assertEquals(2, DummyPostCommitEventListener.handledCount());
     }
 
     @Test
