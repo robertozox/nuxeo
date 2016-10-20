@@ -81,4 +81,47 @@ public interface DocumentType extends CompositeType {
      */
     boolean hasFacet(String facetName);
 
+    /**
+     * @since 8.4
+     *
+     * Returns the file types that were explicitly listed for creation inside this type.
+     */
+    Set<String> getSubtypes();
+
+    /**
+     * @since 8.4
+     *
+     * Returns {@code true} if the given {@code subtype} subtype was explicitly allowed to be created inside this type.
+     */
+    boolean hasSubtype(String subtype);
+
+    /**
+     * @since 8.4
+     * Returns the file types that were explicitly blacklisted and cannot be created inside this type.
+     */
+    Set<String> getBlacklistedSubtypes();
+
+    /**
+     * @since 8.4
+     *
+     * Returns {@code true} if the given {@code subtype} subtype was explicitly blacklisted and cannot be created
+     * inside this type.
+     */
+    boolean hasBlacklistedSubtype(String subtype);
+
+    /**
+     * @since 8.4
+     *
+     * Returns the list of types that can effectively be created inside this type.
+     * Allowed types results from the exclusion of the blacklisted types from the types.
+     */
+    Set<String> getAllowedSubtypes();
+
+    /**
+     * @since 8.4
+     *
+     * Returns {@code true} if the given {@code subtype} subtype can effectively be created inside this type.
+     */
+    boolean hasAllowedSubtype(String subtype);
+
 }

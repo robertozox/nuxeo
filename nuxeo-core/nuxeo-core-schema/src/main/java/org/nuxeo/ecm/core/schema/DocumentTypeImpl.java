@@ -39,11 +39,17 @@ public class DocumentTypeImpl extends CompositeTypeImpl implements DocumentType 
 
     protected PrefetchInfo prefetchInfo;
 
+    protected Set<String> subtypes;
+
+    protected Set<String> blacklistedSubtypes;
+
+    protected Set<String> allowedSubtypes;
+
     /**
      * Constructs a document type. Schemas and facets must include those from the super type.
      */
     public DocumentTypeImpl(String name, DocumentType superType, List<Schema> schemas, Collection<String> facets,
-            PrefetchInfo prefetchInfo) {
+            PrefetchInfo prefetchInfo, Collection<String> subtypes, Collection<String> blacklistedSubtypes) {
         super(superType, SchemaNames.DOCTYPES, name, schemas);
         if (facets == null) {
             this.facets = Collections.emptySet();
@@ -51,10 +57,22 @@ public class DocumentTypeImpl extends CompositeTypeImpl implements DocumentType 
             this.facets = new HashSet<String>(facets);
         }
         this.prefetchInfo = prefetchInfo;
+        if (subtypes == null) {
+            this.subtypes = Collections.emptySet();
+        } else {
+            this.subtypes = new HashSet<>(subtypes);
+        }
+        if (blacklistedSubtypes == null) {
+            this.blacklistedSubtypes = Collections.emptySet();
+        } else {
+            this.blacklistedSubtypes = new HashSet<>(blacklistedSubtypes);
+        }
+        allowedSubtypes = new HashSet<>(this.subtypes);
+        allowedSubtypes.removeAll(this.blacklistedSubtypes);
     }
 
     public DocumentTypeImpl(String name) {
-        this(name, null, Collections.<Schema> emptyList(), Collections.<String> emptySet(), null);
+        this(name, null, Collections.<Schema> emptyList(), Collections.<String> emptySet(), null, null, null);
     }
 
     public void setPrefetchInfo(PrefetchInfo prefetchInfo) {
@@ -89,6 +107,36 @@ public class DocumentTypeImpl extends CompositeTypeImpl implements DocumentType 
     @Override
     public boolean hasFacet(String facetName) {
         return facets.contains(facetName);
+    }
+
+    @Override
+    public Set<String> getSubtypes() {
+        return subtypes;
+    }
+
+    @Override
+    public boolean hasSubtype(String subtype) {
+        return subtype.contains(subtype);
+    }
+
+    @Override
+    public Set<String> getBlacklistedSubtypes() {
+        return blacklistedSubtypes;
+    }
+
+    @Override
+    public boolean hasBlacklistedSubtype(String subtype) {
+        return blacklistedSubtypes.contains(subtype);
+    }
+
+    @Override
+    public Set<String> getAllowedSubtypes() {
+        return allowedSubtypes;
+    }
+
+    @Override
+    public boolean hasAllowedSubtype(String subtype) {
+        return allowedSubtypes.contains(subtype);
     }
 
 }
