@@ -28,22 +28,33 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.nuxeo.ecm.core.schema.SchemaManager;
+import org.nuxeo.ecm.core.schema.SchemaManagerImpl;
 import org.nuxeo.ecm.platform.forms.layout.api.BuiltinModes;
+import org.nuxeo.runtime.api.Framework;
 import org.nuxeo.runtime.test.NXRuntimeTestCase;
 
 public class TypeTest extends NXRuntimeTestCase {
+
     TypeService typeService;
+
+    SchemaManagerImpl schemaManager;
 
     @Before
     public void setUp() throws Exception {
         super.setUp();
+        deployBundle("org.nuxeo.ecm.core.schema");
         deployContrib("org.nuxeo.ecm.platform.types.core.tests", "types-bundle.xml");
+        deployContrib("org.nuxeo.ecm.platform.types.core.tests", "test-core-types-bundle.xml");
         deployContrib("org.nuxeo.ecm.platform.types.core.tests", "test-types-bundle.xml");
+        schemaManager = (SchemaManagerImpl) Framework.getService(SchemaManager.class);
         typeService = (TypeService) runtime.getComponent(TypeService.ID);
     }
 
@@ -268,6 +279,50 @@ public class TypeTest extends NXRuntimeTestCase {
         assertNotNull(typeToBeRemoved);
         assertEquals("initial alternative doc type", typeToBeRemoved.getLabel());
         assertEquals("initial icon", typeToBeRemoved.getIcon());
+    }
+
+    /**
+     * @since 8.4
+     */
+    @Test
+    public void testCoreSubTypesWithHotReload() throws Exception {
+        Collection<String> subtypes = schemaManager.getAllowedSubTypes("MyDocType");
+        assertNotNull(subtypes);
+        assertEquals(2, subtypes.size());
+        assertTrue(subtypes.contains("MyOtherDocType"));
+        assertTrue(subtypes.contains("MyHiddenDocType"));
+        Collection<String> ecmSubtypes = getEcmSubtypes("MyDocType");
+        assertEquals(subtypes.size(), subtypes.size());
+        ecmSubtypes.containsAll(subtypes);
+
+        deployContrib("org.nuxeo.ecm.platform.types.core.tests", "test-types-override-bundle.xml");
+        subtypes = schemaManager.getAllowedSubTypes("MyDocType");
+        assertNotNull(subtypes);
+        assertEquals(2, subtypes.size());
+        assertTrue(subtypes.contains("MyOtherDocType2"));
+        assertTrue(subtypes.contains("MyHiddenDocType"));
+        ecmSubtypes = getEcmSubtypes("MyDocType");
+        assertEquals(subtypes.size(), subtypes.size());
+        ecmSubtypes.containsAll(subtypes);
+
+        undeployContrib("org.nuxeo.ecm.platform.types.core.tests", "test-types-override-bundle.xml");
+        subtypes = schemaManager.getAllowedSubTypes("MyDocType");
+        assertNotNull(subtypes);
+        assertEquals(2, subtypes.size());
+        assertTrue(subtypes.contains("MyOtherDocType"));
+        assertTrue(subtypes.contains("MyHiddenDocType"));
+        ecmSubtypes = getEcmSubtypes("MyDocType");
+        assertEquals(subtypes.size(), subtypes.size());
+        ecmSubtypes.containsAll(subtypes);
+    }
+
+    protected Collection<String> getEcmSubtypes(String type) {
+        Collection<Type> ecmSubtypes = typeService.getAllowedSubTypes(type);
+        Set<String> result = new HashSet<>();
+        for (Type t : ecmSubtypes) {
+            result.add(t.id);
+        }
+        return result;
     }
 
 }
