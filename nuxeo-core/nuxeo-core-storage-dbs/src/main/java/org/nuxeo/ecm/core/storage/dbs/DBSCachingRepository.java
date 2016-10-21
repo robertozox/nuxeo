@@ -71,11 +71,14 @@ public class DBSCachingRepository implements DBSRepository {
 
     private ClusterInvalidator clusterInvalidator;
 
+    private final Invalidations invalidations;
+
     public DBSCachingRepository(DBSRepository repository, DBSRepositoryDescriptor descriptor) {
         this.repository = repository;
         // Init caches
         cache = newCache(descriptor);
         childCache = newCache(descriptor);
+        invalidations = new Invalidations();
         if (descriptor.isClusteringEnabled()) {
             initClusterInvalidator(descriptor);
         }
@@ -123,9 +126,25 @@ public class DBSCachingRepository implements DBSRepository {
     }
 
     @Override
-    public State readState(String id) {
+    public void begin() {
+        repository.begin();
         processReceivedInvalidations();
+    }
 
+    @Override
+    public void commit() {
+        repository.commit();
+        sendInvalidationsToOther();
+        processReceivedInvalidations();
+    }
+
+    @Override
+    public void rollback() {
+        repository.rollback();
+    }
+
+    @Override
+    public State readState(String id) {
         State state = cache.getIfPresent(id);
         if (state == null) {
             state = repository.readState(id);
@@ -138,8 +157,6 @@ public class DBSCachingRepository implements DBSRepository {
 
     @Override
     public List<State> readStates(List<String> ids) {
-        processReceivedInvalidations();
-
         ImmutableMap<String, State> statesMap = cache.getAllPresent(ids);
         List<String> idsToRetrieve = new ArrayList<>(ids);
         idsToRetrieve.removeAll(statesMap.keySet());
@@ -217,10 +234,19 @@ public class DBSCachingRepository implements DBSRepository {
 
     private void invalidateAll(Iterable<String> ids) {
         cache.invalidateAll(ids);
-        if (clusterInvalidator != null) {
-            Invalidations invalidations = new Invalidations();
+        synchronized (invalidations) {
             ids.forEach(invalidations::add);
-            clusterInvalidator.sendInvalidations(invalidations);
+        }
+    }
+
+    protected void sendInvalidationsToOther() {
+        if (!invalidations.isEmpty()) {
+            synchronized (invalidations) {
+                if (clusterInvalidator != null) {
+                    clusterInvalidator.sendInvalidations(invalidations);
+                }
+                invalidations.clear();
+            }
         }
     }
 
@@ -230,8 +256,7 @@ public class DBSCachingRepository implements DBSRepository {
             if (invalidations.all) {
                 cache.invalidateAll();
                 childCache.invalidateAll();
-            }
-            if (invalidations.documentIds != null) {
+            } else if (invalidations.documentIds != null) {
                 cache.invalidateAll(invalidations.documentIds);
             }
         }

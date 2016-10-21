@@ -78,8 +78,6 @@ public class RedisDBSClusterInvalidator implements ClusterInvalidator {
 
     protected String namespace;
 
-    protected String startedDateTime;
-
     private static final Log log = LogFactory.getLog(RedisDBSClusterInvalidator.class);
 
     private CountDownLatch subscribeLatch;
