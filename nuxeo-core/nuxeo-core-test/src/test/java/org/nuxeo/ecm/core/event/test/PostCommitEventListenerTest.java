@@ -79,10 +79,10 @@ public class PostCommitEventListenerTest {
 
     @Test
     @ConditionalIgnoreRule.Ignore(condition = ConditionalIgnoreRule.IgnoreIsolated.class)
+    @LocalDeploy("org.nuxeo.ecm.core.test.tests:test-PostCommitListeners.xml")
     public void testScripts() throws Exception {
-        harness.deployContrib("org.nuxeo.ecm.core.test.tests", "test-PostCommitListeners.xml");
+//        harness.deployContrib("org.nuxeo.ecm.core.test.tests", "test-PostCommitListeners.xml");
 
-        // TODO: PostCommitEventListenerTest.testScripts:77 expected:<0> but was:<2>
         assertEquals(0, SCRIPT_CNT);
 
         EventContextImpl customContext = new EventContextImpl(null, null);
@@ -108,13 +108,14 @@ public class PostCommitEventListenerTest {
 
         assertEquals(2, SCRIPT_CNT);
 
-        harness.undeployContrib("org.nuxeo.ecm.core.test.tests", "test-PostCommitListeners.xml");
+//        harness.undeployContrib("org.nuxeo.ecm.core.test.tests", "test-PostCommitListeners.xml");
     }
 
     @Test
     @LocalDeploy("org.nuxeo.ecm.core.test.tests:test-ShallowFilteringPostCommitListeners.xml")
+    @RandomBug.Repeat(issue = "One event fires twice")
     public void testShallowFiltering() throws Exception {
-        harness.deployContrib("org.nuxeo.ecm.core.test.tests", "test-ShallowFilteringPostCommitListeners.xml");
+//        harness.deployContrib("org.nuxeo.ecm.core.test.tests", "test-ShallowFilteringPostCommitListeners.xml");
 
         DocumentModel doc = session.createDocumentModel("/", "empty", "Document");
         doc = session.createDocument(doc);
@@ -125,7 +126,7 @@ public class PostCommitEventListenerTest {
 
         assertEquals(1, ShallowFilterPostCommitEventListener.handledCount);
 
-        harness.undeployContrib("org.nuxeo.ecm.core.test.tests", "test-ShallowFilteringPostCommitListeners.xml");
+//        harness.undeployContrib("org.nuxeo.ecm.core.test.tests", "test-ShallowFilteringPostCommitListeners.xml");
     }
 
 }

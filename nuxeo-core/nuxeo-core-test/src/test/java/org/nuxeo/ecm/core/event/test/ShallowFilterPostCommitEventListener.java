@@ -33,7 +33,7 @@ public class ShallowFilterPostCommitEventListener implements PostCommitFiltering
 
     @Override
     public void handleEvent(EventBundle events) {
-        handledCount++;
+            handledCount++;
     }
 
     @Override
