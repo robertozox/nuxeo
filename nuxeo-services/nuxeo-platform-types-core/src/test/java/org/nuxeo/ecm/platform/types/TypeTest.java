@@ -27,6 +27,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -45,7 +46,7 @@ public class TypeTest extends NXRuntimeTestCase {
 
     TypeService typeService;
 
-    SchemaManagerImpl schemaManager;
+    SchemaManager schemaManager;
 
     @Before
     public void setUp() throws Exception {
@@ -54,7 +55,7 @@ public class TypeTest extends NXRuntimeTestCase {
         deployContrib("org.nuxeo.ecm.platform.types.core.tests", "types-bundle.xml");
         deployContrib("org.nuxeo.ecm.platform.types.core.tests", "test-core-types-bundle.xml");
         deployContrib("org.nuxeo.ecm.platform.types.core.tests", "test-types-bundle.xml");
-        schemaManager = (SchemaManagerImpl) Framework.getService(SchemaManager.class);
+        schemaManager = Framework.getService(SchemaManager.class);
         typeService = (TypeService) runtime.getComponent(TypeService.ID);
     }
 
@@ -281,11 +282,11 @@ public class TypeTest extends NXRuntimeTestCase {
         assertEquals("initial icon", typeToBeRemoved.getIcon());
     }
 
-    /**
-     * @since 8.4
-     */
     @Test
     public void testCoreSubTypesWithHotReload() throws Exception {
+        Collection<String> testSchemas = Arrays.asList(new String[]{"schema1", "schema2"});
+        Collection<String> testFacets = Arrays.asList(new String[]{"myFacet", "facet1", "facet2"});
+
         Collection<String> subtypes = schemaManager.getAllowedSubTypes("MyDocType");
         assertNotNull(subtypes);
         assertEquals(2, subtypes.size());
@@ -294,6 +295,7 @@ public class TypeTest extends NXRuntimeTestCase {
         Collection<String> ecmSubtypes = getEcmSubtypes("MyDocType");
         assertEquals(subtypes.size(), subtypes.size());
         ecmSubtypes.containsAll(subtypes);
+        verifyFacetsAndSchemas("MyDocType", testFacets, testSchemas);
 
         deployContrib("org.nuxeo.ecm.platform.types.core.tests", "test-types-override-bundle.xml");
         subtypes = schemaManager.getAllowedSubTypes("MyDocType");
@@ -304,6 +306,7 @@ public class TypeTest extends NXRuntimeTestCase {
         ecmSubtypes = getEcmSubtypes("MyDocType");
         assertEquals(subtypes.size(), subtypes.size());
         ecmSubtypes.containsAll(subtypes);
+        verifyFacetsAndSchemas("MyDocType", testFacets, testSchemas);
 
         undeployContrib("org.nuxeo.ecm.platform.types.core.tests", "test-types-override-bundle.xml");
         subtypes = schemaManager.getAllowedSubTypes("MyDocType");
@@ -314,6 +317,11 @@ public class TypeTest extends NXRuntimeTestCase {
         ecmSubtypes = getEcmSubtypes("MyDocType");
         assertEquals(subtypes.size(), subtypes.size());
         ecmSubtypes.containsAll(subtypes);
+        // let's make sure removing contributions won't affect schemas and facets contributed at the core level
+        verifyFacetsAndSchemas("MyDocType", testFacets, testSchemas);
+
+        undeployContrib("org.nuxeo.ecm.platform.types.core.tests", "test-types-bundle.xml");
+        verifyFacetsAndSchemas("MyDocType", testFacets, testSchemas);
     }
 
     protected Collection<String> getEcmSubtypes(String type) {
@@ -323,6 +331,18 @@ public class TypeTest extends NXRuntimeTestCase {
             result.add(t.id);
         }
         return result;
+    }
+
+    protected void verifyFacetsAndSchemas(String docType, Collection<String> facets, Collection<String> schemas) {
+        Collection<String> currentFacets = schemaManager.getDocumentType(docType).getFacets();
+        assertNotNull(currentFacets);
+        assertEquals(facets.size(), currentFacets.size());
+        assertTrue(facets.containsAll(currentFacets));
+
+        Collection<String> currentSchemas = Arrays.asList(schemaManager.getDocumentType(docType).getSchemaNames());
+        assertNotNull(currentSchemas);
+        assertEquals(schemas.size(), currentSchemas.size());
+        assertTrue(schemas.containsAll(currentSchemas));
     }
 
 }

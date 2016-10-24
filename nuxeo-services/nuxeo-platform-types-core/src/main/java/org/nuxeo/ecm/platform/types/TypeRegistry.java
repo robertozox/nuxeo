@@ -39,7 +39,7 @@ public class TypeRegistry extends ContributionFragmentRegistry<Type> {
 
     protected Map<String, Type> types = new HashMap<String, Type>();
 
-    protected Map<String, DocumentTypeDescriptor> dtds = new HashMap<String, DocumentTypeDescriptor>();
+    protected Map<String, DocumentTypeDescriptor> dtds = new HashMap<>();
 
     @Override
     public String getContributionId(Type contrib) {
@@ -259,11 +259,11 @@ public class TypeRegistry extends ContributionFragmentRegistry<Type> {
         DocumentTypeDescriptor dtd = new DocumentTypeDescriptor();
         dtd.name = contrib.getId();
         dtd.subtypes = contrib.getAllowedSubTypes().keySet().toArray(new String[contrib.getAllowedSubTypes().size()]);
-        dtd.blacklistedSubtypes = contrib.getDeniedSubTypes();
+        dtd.forbiddenSubtypes = contrib.getDeniedSubTypes();
         dtd.append = true;
 
         // only make a core contrib if there are changes on subtypes
-        if (dtd.subtypes.length > 0 || dtd.blacklistedSubtypes.length > 0) {
+        if (dtd.subtypes.length > 0 || dtd.forbiddenSubtypes.length > 0) {
             dtds.put(id, dtd);
             schemaManager.registerDocumentType(dtd);
         }
