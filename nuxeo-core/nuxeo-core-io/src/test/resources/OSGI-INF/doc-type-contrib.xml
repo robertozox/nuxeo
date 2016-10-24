@@ -37,9 +37,9 @@
       <subtypes>
         <type>DummyDoc</type>
       </subtypes>
-      <subtypes-blacklisted>
+      <subtypes-forbidden>
         <type>RefDoc</type>
-      </subtypes-blacklisted>
+      </subtypes-forbidden>
     </doctype>
 
   </extension>

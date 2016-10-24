@@ -61,7 +61,7 @@ public class SubtypesJsonEnricherTest extends AbstractJsonWriterTest.Local<Docum
         json.properties(1);
         json = json.has("subtypes").isArray();
         json = json.length(3);
-        json.childrenContains("id", "RefDoc", "File", "CSDoc");
+        json.childrenContains("type", "RefDoc", "File", "CSDoc");
 
 
         DocumentModel doc2 = session.getDocument(new PathRef("/doc2"));
@@ -70,7 +70,7 @@ public class SubtypesJsonEnricherTest extends AbstractJsonWriterTest.Local<Docum
         json.properties(1);
         json = json.has("subtypes").isArray();
         json = json.length(3);
-        json.childrenContains("id", "DummyDoc", "File", "CSDoc");
+        json.childrenContains("type", "DummyDoc", "File", "CSDoc");
     }
 
 }

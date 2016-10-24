@@ -30,10 +30,10 @@ import static org.nuxeo.ecm.core.io.registry.reflect.Instantiations.SINGLETON;
 import static org.nuxeo.ecm.core.io.registry.reflect.Priorities.REFERENCE;
 
 /**
- * @since 8.4
- *
  * Enrich {@link DocumentModel} JSON object with an array of the document types that can be created under the current
  * document.
+ *
+ * @since 8.4
  */
 @Setup(mode = SINGLETON, priority = REFERENCE)
 public class SubtypesJsonEnricher extends AbstractJsonEnricher<DocumentModel> {
@@ -51,7 +51,7 @@ public class SubtypesJsonEnricher extends AbstractJsonEnricher<DocumentModel> {
         jg.writeStartArray();
         for (String subtype : subtypes) {
             jg.writeStartObject();
-            jg.writeStringField("id", subtype);
+            jg.writeStringField("type", subtype);
             jg.writeEndObject();
         }
         jg.writeEndArray();
