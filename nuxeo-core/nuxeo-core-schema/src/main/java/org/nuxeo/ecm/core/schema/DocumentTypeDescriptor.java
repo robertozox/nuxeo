@@ -64,8 +64,8 @@ public class DocumentTypeDescriptor {
     @XNodeList(value = "subtypes/type", type = String[].class, componentType = String.class)
     public String[] subtypes = new String[0];
 
-    @XNodeList(value = "subtypes-blacklisted/type", type = String[].class, componentType = String.class)
-    public String[] blacklistedSubtypes = new String[0];
+    @XNodeList(value = "subtypes-forbidden/type", type = String[].class, componentType = String.class)
+    public String[] forbiddenSubtypes = new String[0];
 
     public DocumentTypeDescriptor() {
     }
@@ -78,10 +78,10 @@ public class DocumentTypeDescriptor {
     }
 
     public DocumentTypeDescriptor(String superTypeName, String name, SchemaDescriptor[] schemas, String[] facets,
-        String[] subtypes, String[] blacklistedSubtypes) {
+        String[] subtypes, String[] forbiddenSubtypes) {
         this(superTypeName, name, schemas, facets);
         this.subtypes = subtypes;
-        this.blacklistedSubtypes = blacklistedSubtypes;
+        this.forbiddenSubtypes = forbiddenSubtypes;
     }
 
     @Override
@@ -98,7 +98,7 @@ public class DocumentTypeDescriptor {
         clone.prefetch = prefetch;
         clone.append = append;
         clone.subtypes = subtypes;
-        clone.blacklistedSubtypes = blacklistedSubtypes;
+        clone.forbiddenSubtypes = forbiddenSubtypes;
         return clone;
     }
 
@@ -133,16 +133,16 @@ public class DocumentTypeDescriptor {
         if (subtypes == null) {
             subtypes = other.subtypes;
         } else if (other.subtypes != null) {
-            List<String> mergedTypes = new ArrayList<String>(Arrays.asList(subtypes));
+            List<String> mergedTypes = new ArrayList<>(Arrays.asList(subtypes));
             mergedTypes.addAll(Arrays.asList(other.subtypes));
             subtypes = mergedTypes.toArray(new String[mergedTypes.size()]);
         }
-        if (blacklistedSubtypes == null) {
-            blacklistedSubtypes = other.blacklistedSubtypes;
-        } else if (other.blacklistedSubtypes != null) {
-            List<String> mergedTypes = new ArrayList<String>(Arrays.asList(blacklistedSubtypes));
-            mergedTypes.addAll(Arrays.asList(other.blacklistedSubtypes));
-            blacklistedSubtypes = mergedTypes.toArray(new String[mergedTypes.size()]);
+        if (forbiddenSubtypes == null) {
+            forbiddenSubtypes = other.forbiddenSubtypes;
+        } else if (other.forbiddenSubtypes != null) {
+            List<String> mergedTypes = new ArrayList<>(Arrays.asList(forbiddenSubtypes));
+            mergedTypes.addAll(Arrays.asList(other.forbiddenSubtypes));
+            forbiddenSubtypes = mergedTypes.toArray(new String[mergedTypes.size()]);
         }
 
         return this;

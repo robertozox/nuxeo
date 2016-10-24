@@ -365,9 +365,6 @@ public class TestSchemaManager extends NXRuntimeTestCase {
         assertFalse(schemaManager.hasSuperType("myDoc4", "myDoc2"));
     }
 
-    /**
-     * @since 8.4
-     */
     @Test
     public void testGetAllowedSubTypes() throws Exception {
         deployContrib("org.nuxeo.ecm.core.schema.tests", "OSGI-INF/CoreTestExtensions.xml");

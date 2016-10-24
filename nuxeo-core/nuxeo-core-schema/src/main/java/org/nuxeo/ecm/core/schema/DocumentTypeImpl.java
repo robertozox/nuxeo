@@ -41,7 +41,7 @@ public class DocumentTypeImpl extends CompositeTypeImpl implements DocumentType 
 
     protected Set<String> subtypes;
 
-    protected Set<String> blacklistedSubtypes;
+    protected Set<String> forbiddenSubtypes;
 
     protected Set<String> allowedSubtypes;
 
@@ -49,7 +49,7 @@ public class DocumentTypeImpl extends CompositeTypeImpl implements DocumentType 
      * Constructs a document type. Schemas and facets must include those from the super type.
      */
     public DocumentTypeImpl(String name, DocumentType superType, List<Schema> schemas, Collection<String> facets,
-            PrefetchInfo prefetchInfo, Collection<String> subtypes, Collection<String> blacklistedSubtypes) {
+            PrefetchInfo prefetchInfo) {
         super(superType, SchemaNames.DOCTYPES, name, schemas);
         if (facets == null) {
             this.facets = Collections.emptySet();
@@ -57,22 +57,10 @@ public class DocumentTypeImpl extends CompositeTypeImpl implements DocumentType 
             this.facets = new HashSet<String>(facets);
         }
         this.prefetchInfo = prefetchInfo;
-        if (subtypes == null) {
-            this.subtypes = Collections.emptySet();
-        } else {
-            this.subtypes = new HashSet<>(subtypes);
-        }
-        if (blacklistedSubtypes == null) {
-            this.blacklistedSubtypes = Collections.emptySet();
-        } else {
-            this.blacklistedSubtypes = new HashSet<>(blacklistedSubtypes);
-        }
-        allowedSubtypes = new HashSet<>(this.subtypes);
-        allowedSubtypes.removeAll(this.blacklistedSubtypes);
     }
 
     public DocumentTypeImpl(String name) {
-        this(name, null, Collections.<Schema> emptyList(), Collections.<String> emptySet(), null, null, null);
+        this(name, null, Collections.<Schema> emptyList(), Collections.<String> emptySet(), null);
     }
 
     public void setPrefetchInfo(PrefetchInfo prefetchInfo) {
@@ -115,18 +103,44 @@ public class DocumentTypeImpl extends CompositeTypeImpl implements DocumentType 
     }
 
     @Override
+    public void setSubtypes(Collection<String> subtypes) {
+        if (subtypes == null) {
+            this.subtypes = Collections.emptySet();
+        } else {
+            this.subtypes = new HashSet<>(subtypes);
+        }
+        allowedSubtypes = new HashSet<>(this.subtypes);
+        if (this.forbiddenSubtypes != null) {
+            allowedSubtypes.removeAll(this.forbiddenSubtypes);
+        }
+    }
+
+    @Override
     public boolean hasSubtype(String subtype) {
         return subtype.contains(subtype);
     }
 
     @Override
-    public Set<String> getBlacklistedSubtypes() {
-        return blacklistedSubtypes;
+    public Set<String> getForbiddenSubtypes() {
+        return forbiddenSubtypes;
     }
 
     @Override
-    public boolean hasBlacklistedSubtype(String subtype) {
-        return blacklistedSubtypes.contains(subtype);
+    public void setForbiddenSubtypes(Collection<String> forbiddenSubtypes) {
+        if (forbiddenSubtypes == null) {
+            this.forbiddenSubtypes = Collections.emptySet();
+        } else {
+            this.forbiddenSubtypes = new HashSet<>(forbiddenSubtypes);
+        }
+        if (this.subtypes != null) {
+            allowedSubtypes = new HashSet<>(this.subtypes);
+            allowedSubtypes.removeAll(this.forbiddenSubtypes);
+        }
+    }
+
+    @Override
+    public boolean hasForbiddenSubtype(String subtype) {
+        return forbiddenSubtypes.contains(subtype);
     }
 
     @Override

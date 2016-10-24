@@ -32,9 +32,9 @@
         <type>myDoc2</type>
         <type>myDoc3</type>
       </subtypes>
-      <subtypes-blacklisted>
+      <subtypes-forbidden>
         <type>myDoc4</type>
-      </subtypes-blacklisted>
+      </subtypes-forbidden>
     </doctype>
     <doctype name="mySpecialFolder">
       <subtypes>

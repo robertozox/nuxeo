@@ -21,6 +21,7 @@ package org.nuxeo.ecm.core.schema;
 
 import org.nuxeo.ecm.core.schema.types.CompositeType;
 
+import java.util.Collection;
 import java.util.Set;
 
 /**
@@ -82,45 +83,59 @@ public interface DocumentType extends CompositeType {
     boolean hasFacet(String facetName);
 
     /**
-     * @since 8.4
+     * Returns the types of the children that can be created inside this type.
      *
-     * Returns the file types that were explicitly listed for creation inside this type.
+     * @since 8.4
      */
     Set<String> getSubtypes();
 
     /**
-     * @since 8.4
+     * Sets the types of the children that can be created inside the this type.
      *
-     * Returns {@code true} if the given {@code subtype} subtype was explicitly allowed to be created inside this type.
+     * @since 8.4
+     */
+    void setSubtypes(Collection<String> subtypes);
+
+    /**
+     * Returns {@code true} if the given {@code subtype} type was explicitly allowed to be created inside this type.
+     *
+     * @since 8.4
      */
     boolean hasSubtype(String subtype);
 
     /**
+     * Returns the types of the children that cannot be created inside this type.
+     *
      * @since 8.4
-     * Returns the file types that were explicitly blacklisted and cannot be created inside this type.
      */
-    Set<String> getBlacklistedSubtypes();
+    Set<String> getForbiddenSubtypes();
 
     /**
-     * @since 8.4
+     * Sets the types of the children that cannot be created inside the this type.
      *
-     * Returns {@code true} if the given {@code subtype} subtype was explicitly blacklisted and cannot be created
-     * inside this type.
+     * @since 8.4
      */
-    boolean hasBlacklistedSubtype(String subtype);
+    void setForbiddenSubtypes(Collection<String> subtypes);
 
     /**
-     * @since 8.4
+     * Returns {@code true} if the given {@code subtype} type was forbidden from being created inside this type.
      *
+     * @since 8.4
+     */
+    boolean hasForbiddenSubtype(String subtype);
+
+    /**
      * Returns the list of types that can effectively be created inside this type.
-     * Allowed types results from the exclusion of the blacklisted types from the types.
+     * Allowed types results from the exclusion of the forbidden subtypes from the subtypes.
+     *
+     * @since 8.4
      */
     Set<String> getAllowedSubtypes();
 
     /**
-     * @since 8.4
+     * Returns {@code true} if the given {@code subtype} type can effectively be created inside this type.
      *
-     * Returns {@code true} if the given {@code subtype} subtype can effectively be created inside this type.
+     * @since 8.4
      */
     boolean hasAllowedSubtype(String subtype);
 

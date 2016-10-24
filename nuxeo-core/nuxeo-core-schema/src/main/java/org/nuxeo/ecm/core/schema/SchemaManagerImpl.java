@@ -551,15 +551,12 @@ public class SchemaManagerImpl implements SchemaManager {
         Set<String> schemaNames = SchemaDescriptor.getSchemaNames(dtd.schemas);
         facetNames.addAll(Arrays.asList(dtd.facets));
         Set<String> subtypes = new HashSet<>(Arrays.asList(dtd.subtypes));
-        Set<String> blacklisted = new HashSet<>(Arrays.asList(dtd.blacklistedSubtypes));
+        Set<String> forbidden = new HashSet<>(Arrays.asList(dtd.forbiddenSubtypes));
 
         // inherited
         if (parent != null) {
             facetNames.addAll(parent.getFacets());
             schemaNames.addAll(Arrays.asList(parent.getSchemaNames()));
-            // not inheriting subtypes and blacklisted subtypes for compatibility with platform types
-            //subtypes.addAll(parent.getSubtypes());
-            //blacklisted.addAll(parent.getBlacklistedSubtypes());
         }
 
         // add schemas names from facets
@@ -586,8 +583,9 @@ public class SchemaManagerImpl implements SchemaManager {
 
         // create doctype
         PrefetchInfo prefetch = dtd.prefetch == null ? prefetchInfo : new PrefetchInfo(dtd.prefetch);
-        DocumentTypeImpl docType = new DocumentTypeImpl(name, parent, docTypeSchemas, facetNames, prefetch,
-                                                        subtypes, blacklisted);
+        DocumentTypeImpl docType = new DocumentTypeImpl(name, parent, docTypeSchemas, facetNames, prefetch);
+        docType.setSubtypes(subtypes);
+        docType.setForbiddenSubtypes(forbidden);
         registerDocumentType(docType);
 
         return docType;
@@ -638,10 +636,8 @@ public class SchemaManagerImpl implements SchemaManager {
         return subTypes != null && subTypes.contains(docType);
     }
 
-    /**
-     * @since 8.4
-     */
-    public Collection<String> getAllowedSubTypes(String typeName) {
+    @Override
+    public Set<String> getAllowedSubTypes(String typeName) {
         DocumentType dt = getDocumentType(typeName);
         return dt == null ? null : dt.getAllowedSubtypes();
     }
