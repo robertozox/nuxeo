@@ -1,7 +1,8 @@
 <component name="test:redis:pfouh:listener">
 
+  <require>event-listener-async</require>
   <extension target="org.nuxeo.ecm.core.event.EventServiceComponent" point="listener">
-    <listener async="true" class="org.nuxeo.ecm.core.redis.TestRedisWorkSchedule$PfouhListener" name="pfouh">
+    <listener async="true" class="org.nuxeo.ecm.core.redis.TestRedisWorkSchedule$PfouhListener" name="postCommit">
       <event>pfouh</event>
     </listener>
   </extension>

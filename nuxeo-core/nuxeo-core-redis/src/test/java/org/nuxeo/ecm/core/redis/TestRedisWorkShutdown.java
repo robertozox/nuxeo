@@ -1,20 +1,5 @@
 package org.nuxeo.ecm.core.redis;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-
-import javax.inject.Inject;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hamcrest.Matchers;
@@ -30,17 +15,29 @@ import org.nuxeo.runtime.api.Framework;
 import org.nuxeo.runtime.test.runner.Features;
 import org.nuxeo.runtime.test.runner.FeaturesRunner;
 
-import redis.clients.jedis.Jedis;
+import javax.inject.Inject;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.Assert.assertEquals;
 
 @Features({ RedisFeature.class, CoreFeature.class })
 @RunWith(FeaturesRunner.class)
 public class TestRedisWorkShutdown {
 
-    static Log log = LogFactory.getLog(TestRedisWorkShutdown.class);
+    private static Log log = LogFactory.getLog(TestRedisWorkShutdown.class);
 
-    static CountDownLatch canShutdown = new CountDownLatch(2);
+    private static CountDownLatch canShutdown = new CountDownLatch(2);
 
-    static CountDownLatch canProceed = new CountDownLatch(1);
+    private static CountDownLatch canProceed = new CountDownLatch(1);
 
     public static class MyWork extends AbstractWork {
 
@@ -78,8 +75,6 @@ public class TestRedisWorkShutdown {
                             .interrupt();
                     throw new RuntimeException(cause);
                 }
-            } else {
-                ;
             }
         }
 
@@ -98,13 +93,14 @@ public class TestRedisWorkShutdown {
 
     @Test
     public void worksArePersisted() throws InterruptedException {
-        assertMetrics(0, 0, 0, 0);
+        int completed = works.getMetrics("default").getCompleted().intValue();
+        assertMetrics(0, 0, completed, 0);
         try {
             // given two running works
             works.schedule(new MyWork("first"));
             works.schedule(new MyWork("second"));
             canShutdown.await(10, TimeUnit.SECONDS);
-            assertMetrics(0, 2, 0, 0);
+            assertMetrics(0, 2, completed, 0);
             // when I shutdown
             works.shutdown(10, TimeUnit.SECONDS);
         } finally {
@@ -122,7 +118,7 @@ public class TestRedisWorkShutdown {
         }
         Assert.assertTrue(works.awaitCompletion(10, TimeUnit.SECONDS));
         // works are completed
-        assertMetrics(0, 0, 2, 2);
+        assertMetrics(0, 0, 2+completed, 2);
     }
 
     class ScheduledRetriever {
@@ -148,19 +144,16 @@ public class TestRedisWorkShutdown {
 
         List<Work> listScheduled() {
             return Framework.getService(RedisExecutor.class)
-                    .execute(new RedisCallable<List<Work>>() {
-                        @Override
-                        public List<Work> call(Jedis jedis) {
-                            Set<byte[]> keys = jedis.smembers(queueBytes());
-                            List<Work> list = new ArrayList<Work>(keys.size());
-                            for (byte[] workIdBytes : keys) {
-                                // get data
-                                byte[] workBytes = jedis.hget(dataKey(), workIdBytes);
-                                Work work = deserializeWork(workBytes);
-                                list.add(work);
-                            }
-                            return list;
+                    .execute(jedis -> {
+                        Set<byte[]> keys = jedis.smembers(queueBytes());
+                        List<Work> list = new ArrayList<>(keys.size());
+                        for (byte[] workIdBytes : keys) {
+                            // get data
+                            byte[] workBytes = jedis.hget(dataKey(), workIdBytes);
+                            Work work = deserializeWork(workBytes);
+                            list.add(work);
                         }
+                        return list;
                     });
         }
 

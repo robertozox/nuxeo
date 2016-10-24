@@ -18,12 +18,6 @@
  */
 package org.nuxeo.ecm.core.redis;
 
-import java.io.IOException;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
 import org.apache.commons.lang.StringUtils;
 import org.nuxeo.ecm.core.cache.CacheFeature;
 import org.nuxeo.ecm.core.redis.embedded.RedisEmbeddedGuessConnectionError;
@@ -39,8 +33,13 @@ import org.nuxeo.runtime.test.runner.FeaturesRunner;
 import org.nuxeo.runtime.test.runner.RuntimeFeature;
 import org.nuxeo.runtime.test.runner.RuntimeHarness;
 import org.nuxeo.runtime.test.runner.SimpleFeature;
-
 import redis.clients.jedis.Protocol;
+
+import java.io.IOException;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 @Features({ CoreFeature.class, CacheFeature.class })
 @RepositoryConfig(init = DefaultRepositoryInit.class)
